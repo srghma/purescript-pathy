@@ -6,6 +6,10 @@ module Pathy.Parser
   , parseAbsFile
   , parseRelDir
   , parseAbsDir
+  , parseAnyDir
+  , parseAnyFile
+  , parseAbsPath
+  , parseRelPath
   ) where
 
 import Prelude
@@ -22,7 +26,7 @@ import Data.String.NonEmpty (NonEmptyString)
 import Data.String.NonEmpty as NES
 import Data.String.Pattern (Pattern(..)) as S
 import Pathy.Name (Name(..))
-import Pathy.Path (AbsDir, AbsFile, Path, RelDir, RelFile, currentDir, extendPath, parentOf, rootDir)
+import Pathy.Path (AbsDir, AbsFile, AnyDir, AnyFile, Path, RelDir, RelFile, RelPath, AbsPath, currentDir, extendPath, parentOf, rootDir)
 import Pathy.Phantom (class IsRelOrAbs, Dir)
 
 newtype Parser = Parser
@@ -111,3 +115,19 @@ parseRelDir p = parsePath p Just (const Nothing) (const Nothing) (const Nothing)
 -- | Attempts to parse an absolute directory.
 parseAbsDir :: Parser -> String -> Maybe AbsDir
 parseAbsDir p = parsePath p (const Nothing) Just (const Nothing) (const Nothing) Nothing
+
+-- | Attempts to parse an absolute or relative directory.
+parseAnyDir :: Parser -> String -> Maybe AnyDir
+parseAnyDir p = parsePath p (Just <<< Right) (Just <<< Left) (const Nothing) (const Nothing) Nothing
+
+-- | Attempts to parse an absolute or relative directory.
+parseAnyFile :: Parser -> String -> Maybe AnyFile
+parseAnyFile p = parsePath p (const Nothing) (const Nothing) (Just <<< Right) (Just <<< Left) Nothing
+
+-- | Attempts to parse an relative directory or file.
+parseRelPath :: Parser -> String -> Maybe RelPath
+parseRelPath p = parsePath p (Just <<< Left) (const Nothing) (Just <<< Right) (const Nothing) Nothing
+
+-- | Attempts to parse an absolute directory or file.
+parseAbsPath :: Parser -> String -> Maybe AbsPath
+parseAbsPath p = parsePath p (const Nothing) (Just <<< Left) (const Nothing) (Just <<< Right) Nothing
