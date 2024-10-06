@@ -23,6 +23,7 @@ package:
     - tuples
     - typelevel-prelude
     - unsafe-coerce
+    - variant
   test:
     main: Test.Main
     dependencies:

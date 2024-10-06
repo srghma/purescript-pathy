@@ -6,12 +6,14 @@ module Pathy.Parser
   , parseAbsFile
   , parseRelDir
   , parseAbsDir
-  , parseAnyDir
-  , parseAnyFile
-  , parseAbsPath
-  , parseRelPath
+  , parseAnyDirPathVariant
+  , parseAnyFilePathVariant
+  , parseRelAnyPathVariant
+  , parseAbsAnyPathVariant
+  , parseAnyAnyPathVariant
   ) where
 
+import Pathy.Path (AbsAnyPathVariant, AbsDir, AbsFile, AnyAnyPathVariant, AnyDirPathVariant, AnyFilePathVariant, Path, RelAnyPathVariant, RelDir, RelFile, currentDir, extendPath, parentOf, proxyAbsDir, proxyAbsFile, proxyRelDir, proxyRelFile, rootDir)
 import Prelude
 
 import Data.Array (foldl)
@@ -25,8 +27,8 @@ import Data.String.CodeUnits (take, takeRight) as S
 import Data.String.NonEmpty (NonEmptyString)
 import Data.String.NonEmpty as NES
 import Data.String.Pattern (Pattern(..)) as S
+import Data.Variant (inj)
 import Pathy.Name (Name(..))
-import Pathy.Path (AbsDir, AbsFile, AnyDir, AnyFile, Path, RelDir, RelFile, RelPath, AbsPath, currentDir, extendPath, parentOf, rootDir)
 import Pathy.Phantom (class IsRelOrAbs, Dir)
 
 newtype Parser = Parser
@@ -117,17 +119,21 @@ parseAbsDir :: Parser -> String -> Maybe AbsDir
 parseAbsDir p = parsePath p (const Nothing) Just (const Nothing) (const Nothing) Nothing
 
 -- | Attempts to parse an absolute or relative directory.
-parseAnyDir :: Parser -> String -> Maybe AnyDir
-parseAnyDir p = parsePath p (Just <<< Right) (Just <<< Left) (const Nothing) (const Nothing) Nothing
+parseAnyDirPathVariant :: Parser -> String -> Maybe AnyDirPathVariant
+parseAnyDirPathVariant p = parsePath p (Just <<< inj proxyRelDir) (Just <<< inj proxyAbsDir) (const Nothing) (const Nothing) Nothing
 
--- | Attempts to parse an absolute or relative directory.
-parseAnyFile :: Parser -> String -> Maybe AnyFile
-parseAnyFile p = parsePath p (const Nothing) (const Nothing) (Just <<< Right) (Just <<< Left) Nothing
+-- | Attempts to parse an absolute or relative file.
+parseAnyFilePathVariant :: Parser -> String -> Maybe AnyFilePathVariant
+parseAnyFilePathVariant p = parsePath p (const Nothing) (const Nothing) (Just <<< inj proxyRelFile) (Just <<< inj proxyAbsFile) Nothing
 
--- | Attempts to parse an relative directory or file.
-parseRelPath :: Parser -> String -> Maybe RelPath
-parseRelPath p = parsePath p (Just <<< Left) (const Nothing) (Just <<< Right) (const Nothing) Nothing
+-- | Attempts to parse a relative directory or file.
+parseRelAnyPathVariant :: Parser -> String -> Maybe RelAnyPathVariant
+parseRelAnyPathVariant p = parsePath p (Just <<< inj proxyRelDir) (const Nothing) (Just <<< inj proxyRelFile) (const Nothing) Nothing
 
 -- | Attempts to parse an absolute directory or file.
-parseAbsPath :: Parser -> String -> Maybe AbsPath
-parseAbsPath p = parsePath p (const Nothing) (Just <<< Left) (const Nothing) (Just <<< Right) Nothing
+parseAbsAnyPathVariant :: Parser -> String -> Maybe AbsAnyPathVariant
+parseAbsAnyPathVariant p = parsePath p (const Nothing) (Just <<< inj proxyAbsDir) (const Nothing) (Just <<< inj proxyAbsFile) Nothing
+
+-- | Attempts to parse an absolute or relative directory or file.
+parseAnyAnyPathVariant :: Parser -> String -> Maybe AnyAnyPathVariant
+parseAnyAnyPathVariant p = parsePath p (Just <<< inj proxyRelDir) (Just <<< inj proxyAbsDir) (Just <<< inj proxyRelFile) (Just <<< inj proxyAbsFile) Nothing
