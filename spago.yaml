@@ -8,10 +8,7 @@ package:
       githubRepo: purescript-pathy
   dependencies:
     - arrays
-    - console
-    - effect
     - either
-    - exceptions
     - foldable-traversable
     - gen
     - identity
@@ -21,7 +18,6 @@ package:
     - nonempty
     - partial
     - prelude
-    - quickcheck
     - strings
     - tailrec
     - tuples
@@ -30,7 +26,9 @@ package:
   test:
     main: Test.Main
     dependencies:
+      - console
       - effect
+      - exceptions
       - quickcheck
 workspace:
   packageSet:

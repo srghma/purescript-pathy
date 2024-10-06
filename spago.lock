@@ -6,10 +6,7 @@
         "core": {
           "dependencies": [
             "arrays",
-            "console",
-            "effect",
             "either",
-            "exceptions",
             "foldable-traversable",
             "gen",
             "identity",
@@ -19,7 +16,6 @@
             "nonempty",
             "partial",
             "prelude",
-            "quickcheck",
             "strings",
             "tailrec",
             "tuples",
@@ -29,7 +25,6 @@
           "build_plan": [
             "arrays",
             "bifunctors",
-            "console",
             "const",
             "contravariant",
             "control",
@@ -37,7 +32,6 @@
             "effect",
             "either",
             "enums",
-            "exceptions",
             "exists",
             "foldable-traversable",
             "functions",
@@ -47,7 +41,6 @@
             "integers",
             "invariant",
             "lazy",
-            "lcg",
             "lists",
             "maybe",
             "newtype",
@@ -57,15 +50,11 @@
             "partial",
             "prelude",
             "profunctor",
-            "quickcheck",
-            "random",
-            "record",
             "refs",
             "safe-coerce",
             "st",
             "strings",
             "tailrec",
-            "transformers",
             "tuples",
             "type-equality",
             "typelevel-prelude",
@@ -75,7 +64,9 @@
         },
         "test": {
           "dependencies": [
+            "console",
             "effect",
+            "exceptions",
             "quickcheck"
           ],
           "build_plan": [
