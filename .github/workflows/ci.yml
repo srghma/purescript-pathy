@@ -28,10 +28,6 @@ jobs:
             .spago
             output
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "lts/*"
-
       - name: Install dependencies
         run: spago install
 
