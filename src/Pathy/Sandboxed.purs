@@ -14,33 +14,37 @@ import Prelude
 
 import Data.Maybe (Maybe(..))
 import Pathy.Name (class IsName, Name, reflectName)
-import Pathy.Path (Path, appendPath, currentDir, dir, dir', file', foldPath, relativeTo, rootDir, (</>))
+import Pathy.Path (Path, appendPath, dir', file', foldPath, relativeTo, rootDir, (</>))
 import Pathy.Phantom (class IsDirOrFile, class IsRelOrAbs, Abs, Dir, File, Rel, onRelOrAbs)
-import Type.Prelude (Proxy(..))
 
 -- | The type for paths that have been sandboxed.
-data SandboxedPath a b = SandboxedPath (Path Abs Dir) (Path a b)
+data SandboxedPath dirOrFile = SandboxedPath (Path Abs Dir) (Path Abs dirOrFile)
 
-derive instance eqSandboxedPath :: (IsRelOrAbs a, IsDirOrFile b) => Eq (SandboxedPath a b)
-derive instance ordSandboxedPath :: (IsRelOrAbs a, IsDirOrFile b) => Ord (SandboxedPath a b)
-instance showSandboxedPath :: (IsRelOrAbs a, IsDirOrFile b) => Show (SandboxedPath a b) where
+derive instance (IsDirOrFile dirOrFile) => Eq (SandboxedPath dirOrFile)
+derive instance (IsDirOrFile dirOrFile) => Ord (SandboxedPath dirOrFile)
+instance (IsDirOrFile dirOrFile) => Show (SandboxedPath dirOrFile) where
   show (SandboxedPath root path) = "(SandboxedPath " <> show root <> " " <> show path <> ")"
 
 -- | Attempts to sandbox a path relative to an absolute directory ("sandbox
--- | root"). If the `Path a b` escapes the sandbox root `Nothing` will be
+-- | root"). If the `Path dirOrFile` escapes the sandbox root `Nothing` will be
 -- | returned.
 sandbox
-  :: forall a b
-   . IsRelOrAbs a
+  :: forall dirOrFile relOrAbs
+   . IsDirOrFile dirOrFile
+  => IsRelOrAbs relOrAbs
   => Path Abs Dir
-  -> Path a b
-  -> Maybe (SandboxedPath a b)
-sandbox root = map (SandboxedPath root) <<< onRelOrAbs (go (root </> _)) (go identity)
+  -> Path relOrAbs dirOrFile
+  -> Maybe (SandboxedPath dirOrFile)
+sandbox root = map (SandboxedPath root) <<< onRelOrAbs onRel onAbs
   where
-  go :: forall p. (p -> Path Abs b) -> (p -> Path a b) -> p -> Maybe (Path a b)
-  go f coe p =
-    if goesUp (f p `relativeTo` root) then Nothing
-    else Just (coe p)
+  onRel :: (Path Rel dirOrFile -> Path relOrAbs dirOrFile) -> Path Rel dirOrFile -> Maybe (Path Abs dirOrFile)
+  onRel _coercePath relPath = onAbs' (root </> relPath)
+
+  onAbs :: (Path Abs dirOrFile -> Path relOrAbs dirOrFile) -> Path Abs dirOrFile -> Maybe (Path Abs dirOrFile)
+  onAbs _coercePath = onAbs'
+
+  onAbs' :: Path Abs dirOrFile -> Maybe (Path Abs dirOrFile)
+  onAbs' absPath = if goesUp (absPath `relativeTo` root) then Nothing else Just absPath
 
   goesUp :: forall x y. Path x y -> Boolean
   goesUp = foldPath false (const true) (\p _ -> goesUp p)
@@ -49,32 +53,32 @@ sandbox root = map (SandboxedPath root) <<< onRelOrAbs (go (root </> _)) (go ide
 -- |
 -- | This should only be used for situations where a path is already constrained
 -- | within a system so that access to `/` is safe - for instance, in URIs.
-sandboxAny :: forall a b. Path a b -> SandboxedPath a b
+sandboxAny :: forall dirOrFile. Path Abs dirOrFile -> SandboxedPath dirOrFile
 sandboxAny p = SandboxedPath rootDir p
 
 -- | Returns the location a `SandboxedPath` was sandboxed to.
-sandboxRoot :: forall a b. SandboxedPath a b -> Path Abs Dir
+sandboxRoot :: forall dirOrFile. SandboxedPath dirOrFile -> Path Abs Dir
 sandboxRoot (SandboxedPath root _) = root
 
 -- | Extracts the original path from a `SandboxedPath`.
-unsandbox :: forall a b. SandboxedPath a b -> Path a b
+unsandbox :: forall dirOrFile. SandboxedPath dirOrFile -> Path Abs dirOrFile
 unsandbox (SandboxedPath _ p) = p
 
 ------
 
-class SafeAppend a b where
-  safeAppendPath :: SandboxedPath a Dir -> Name b -> SandboxedPath a b
+class SafeAppend dirOrFile where
+  safeAppendPath :: SandboxedPath Dir -> Name dirOrFile -> SandboxedPath dirOrFile
 
-instance safeAppendFile :: IsRelOrAbs a => SafeAppend a File where
+instance safeAppendFile :: SafeAppend File where
   safeAppendPath (SandboxedPath root baseDir) name =
     SandboxedPath root (appendPath baseDir (file' name))
 
 -- | Instance for appending a relative directory path
-instance safeAppendDir :: IsRelOrAbs a => SafeAppend a Dir where
+instance safeAppendDir :: SafeAppend Dir where
   safeAppendPath (SandboxedPath root baseDir) name =
     SandboxedPath root (appendPath baseDir (dir' name))
 
-safeAppendPath' :: forall a b s proxy . SafeAppend a b => IsName s => SandboxedPath a Dir -> proxy s -> SandboxedPath a b
+safeAppendPath' :: forall dirOrFile s proxy . SafeAppend dirOrFile => IsName s => SandboxedPath Dir -> proxy s -> SandboxedPath dirOrFile
 safeAppendPath' d n = safeAppendPath d (reflectName n)
 
 infixl 6 safeAppendPath' as <///>
