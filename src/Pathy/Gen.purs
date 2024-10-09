@@ -80,8 +80,8 @@ genAbsAnyPathVariant = Gen.oneOf $ (inj proxyAbsDir <$> genAbsDirPath) :| [ inj 
 
 genAnyAnyPathVariant :: forall m. MonadGen m => MonadRec m => m AnyAnyPathVariant
 genAnyAnyPathVariant = Gen.oneOf $
-  ( inj proxyRelDir <$> genRelDirPath ) :|
-  [ inj proxyAbsDir <$> genAbsDirPath
-  , inj proxyRelFile <$> genRelFilePath
-  , inj proxyAbsFile <$> genAbsFilePath
-  ]
+  (inj proxyRelDir <$> genRelDirPath) :|
+    [ inj proxyAbsDir <$> genAbsDirPath
+    , inj proxyRelFile <$> genRelFilePath
+    , inj proxyAbsFile <$> genAbsFilePath
+    ]
