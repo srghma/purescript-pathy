@@ -4,13 +4,19 @@ module Pathy.Sandboxed
   , sandboxAny
   , sandboxRoot
   , unsandbox
+  , class SafeAppend
+  , safeAppendPath
+  , safeAppendPath'
+  , (<///>)
   ) where
 
 import Prelude
 
 import Data.Maybe (Maybe(..))
-import Pathy.Path (Path, foldPath, relativeTo, rootDir, (</>))
-import Pathy.Phantom (class IsDirOrFile, class IsRelOrAbs, Abs, Dir, onRelOrAbs)
+import Pathy.Name (class IsName, Name, reflectName)
+import Pathy.Path (Path, appendPath, currentDir, dir, dir', file', foldPath, relativeTo, rootDir, (</>))
+import Pathy.Phantom (class IsDirOrFile, class IsRelOrAbs, Abs, Dir, File, Rel, onRelOrAbs)
+import Type.Prelude (Proxy(..))
 
 -- | The type for paths that have been sandboxed.
 data SandboxedPath a b = SandboxedPath (Path Abs Dir) (Path a b)
@@ -53,3 +59,34 @@ sandboxRoot (SandboxedPath root _) = root
 -- | Extracts the original path from a `SandboxedPath`.
 unsandbox :: forall a b. SandboxedPath a b -> Path a b
 unsandbox (SandboxedPath _ p) = p
+
+------
+
+class SafeAppend a b where
+  safeAppendPath :: SandboxedPath a Dir -> Name b -> SandboxedPath a b
+
+instance safeAppendFile :: IsRelOrAbs a => SafeAppend a File where
+  safeAppendPath (SandboxedPath root baseDir) name =
+    SandboxedPath root (appendPath baseDir (file' name))
+
+-- | Instance for appending a relative directory path
+instance safeAppendDir :: IsRelOrAbs a => SafeAppend a Dir where
+  safeAppendPath (SandboxedPath root baseDir) name =
+    SandboxedPath root (appendPath baseDir (dir' name))
+
+safeAppendPath' :: forall a b s proxy . SafeAppend a b => IsName s => SandboxedPath a Dir -> proxy s -> SandboxedPath a b
+safeAppendPath' d n = safeAppendPath d (reflectName n)
+
+infixl 6 safeAppendPath' as <///>
+
+-- outerTmpDir :: SandboxedPath Rel Dir
+-- outerTmpDir = sandboxAny (currentDir </> dir (Proxy :: _ "tmp") </> dir (Proxy :: _ "dir-entries-test"))
+--
+-- foo :: SandboxedPath Rel File
+-- foo = outerTmpDir <///> (Proxy :: _ "asdf")
+--
+-- bar :: SandboxedPath Rel File
+-- bar = outerTmpDir <///> (Proxy :: _ "asdf") <///> (Proxy :: _ "asdf")
+--
+-- q :: SandboxedPath Rel Dir
+-- q = outerTmpDir <///> (Proxy :: _ "asdf") <///> (Proxy :: _ "asdf")
