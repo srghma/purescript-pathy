@@ -67,12 +67,26 @@ joinName { name, ext } = Name $ case ext of
 -- | ```purescript
 -- | extension (Name ".foo")    == Nothing
 -- | extension (Name "foo.")    == Nothing
+-- | extension (Name "foo")     == Nothing
 -- | extension (Name ".")       == Nothing
 -- | extension (Name "foo.baz") == Just "baz"
 -- | ````
 -- | _Note, in real code all strings from this examples would be `NonEmptyString`._
 extension :: forall n. Name n -> Maybe NonEmptyString
 extension = splitName >>> _.ext
+
+-- | Retrieves the basename of a name. also see [`splitName`](#v:splitName)
+-- |
+-- | ```purescript
+-- | basename (Name ".foo")    == ".foo"
+-- | basename (Name "foo.")    == "foo."
+-- | basename (Name "foo")     == "foo"
+-- | basename (Name ".")       == "."
+-- | basename (Name "foo.baz") == "foo"
+-- | ````
+-- | _Note, in real code all strings from this examples would be `NonEmptyString`._
+basename :: forall n. Name n -> NonEmptyString
+basename = splitName >>> _.name
 
 -- | Alters an extension of a name. This allows extensions to be added, removed,
 -- | or modified. see [`splitName`](#v:splitName) and [`joinName`](#v:joinName)
