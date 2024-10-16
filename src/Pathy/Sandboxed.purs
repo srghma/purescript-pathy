@@ -1,21 +1,26 @@
 module Pathy.Sandboxed
-  ( SandboxedPath
-  , sandbox
-  , sandboxAny
-  , sandboxRoot
-  , unsandbox
+  ( (<///>)
+  , SandboxedPath
   , class SafeAppend
   , safeAppendPath
   , safeAppendPath'
-  , (<///>)
+  , sandbox
+  , sandboxAny
+  , sandboxAny_AbsAnyPathVariant
+  , sandboxAny_AnyAnyPathVariant
+  , sandboxAny_AnyDirPathVariant
+  , sandboxAny_AnyFilePathVariant
+  , sandboxAny_RelAnyPathVariant
+  , sandboxRoot
+  , unsandbox
   ) where
 
+import Pathy.Path (AbsAnyPathVariant, AnyAnyPathVariant, AnyDirPathVariant, AnyFilePathVariant, Path, RelAnyPathVariant, appendPath, dir', file', foldPath, relativeTo, rootDir, (</>))
 import Prelude
 
 import Data.Maybe (Maybe(..))
-import Data.Maybe as Maybe
+import Data.Variant as Variant
 import Pathy.Name (class IsName, Name, reflectName)
-import Pathy.Path (Path, appendPath, dir', file', foldPath, relativeTo, rootDir, (</>))
 import Pathy.Phantom (class IsDirOrFile, class IsRelOrAbs, Abs, Dir, File, Rel, onRelOrAbs)
 import Unsafe.Coerce (unsafeCoerce)
 
@@ -73,6 +78,34 @@ sandboxRoot (SandboxedPath root _) = root
 -- | Extracts the original path from a `SandboxedPath`.
 unsandbox :: forall dirOrFile. SandboxedPath dirOrFile -> Path Abs dirOrFile
 unsandbox (SandboxedPath _ p) = p
+
+---------------
+
+sandboxAny_AnyDirPathVariant :: AnyDirPathVariant -> SandboxedPath Dir
+sandboxAny_AnyDirPathVariant = Variant.match { absDir: sandboxAny, relDir: sandboxAny }
+
+sandboxAny_AnyFilePathVariant :: AnyFilePathVariant -> SandboxedPath File
+sandboxAny_AnyFilePathVariant = Variant.match { absFile: sandboxAny, relFile: sandboxAny }
+
+sandboxAny_RelAnyPathVariant :: forall dirOrFile. IsDirOrFile dirOrFile => RelAnyPathVariant -> SandboxedPath dirOrFile
+sandboxAny_RelAnyPathVariant = Variant.match
+  { relDir: (unsafeCoerce :: Path Rel Dir -> Path Rel dirOrFile) >>> sandboxAny
+  , relFile: (unsafeCoerce :: Path Rel File -> Path Rel dirOrFile) >>> sandboxAny
+  }
+
+sandboxAny_AbsAnyPathVariant :: forall dirOrFile. IsDirOrFile dirOrFile => AbsAnyPathVariant -> SandboxedPath dirOrFile
+sandboxAny_AbsAnyPathVariant = Variant.match
+  { absDir: (unsafeCoerce :: Path Abs Dir -> Path Abs dirOrFile) >>> sandboxAny
+  , absFile: (unsafeCoerce :: Path Abs File -> Path Abs dirOrFile) >>> sandboxAny
+  }
+
+sandboxAny_AnyAnyPathVariant :: forall dirOrFile. IsDirOrFile dirOrFile => AnyAnyPathVariant -> SandboxedPath dirOrFile
+sandboxAny_AnyAnyPathVariant = Variant.match
+  { absDir: (unsafeCoerce :: Path Abs Dir -> Path Abs dirOrFile) >>> sandboxAny
+  , absFile: (unsafeCoerce :: Path Abs File -> Path Abs dirOrFile) >>> sandboxAny
+  , relDir: (unsafeCoerce :: Path Rel Dir -> Path Rel dirOrFile) >>> sandboxAny
+  , relFile: (unsafeCoerce :: Path Rel File -> Path Rel dirOrFile) >>> sandboxAny
+  }
 
 ------
 
