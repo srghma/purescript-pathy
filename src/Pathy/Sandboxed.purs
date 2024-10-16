@@ -13,9 +13,11 @@ module Pathy.Sandboxed
 import Prelude
 
 import Data.Maybe (Maybe(..))
+import Data.Maybe as Maybe
 import Pathy.Name (class IsName, Name, reflectName)
 import Pathy.Path (Path, appendPath, dir', file', foldPath, relativeTo, rootDir, (</>))
 import Pathy.Phantom (class IsDirOrFile, class IsRelOrAbs, Abs, Dir, File, Rel, onRelOrAbs)
+import Unsafe.Coerce (unsafeCoerce)
 
 -- | The type for paths that have been sandboxed.
 data SandboxedPath dirOrFile = SandboxedPath (Path Abs Dir) (Path Abs dirOrFile)
@@ -26,7 +28,7 @@ instance (IsDirOrFile dirOrFile) => Show (SandboxedPath dirOrFile) where
   show (SandboxedPath root path) = "(SandboxedPath " <> show root <> " " <> show path <> ")"
 
 -- | Attempts to sandbox a path relative to an absolute directory ("sandbox
--- | root"). If the `Path dirOrFile` escapes the sandbox root `Nothing` will be
+-- | root"). If the `Path relOrAbs dirOrFile` escapes the sandbox root `Nothing` will be
 -- | returned.
 sandbox
   :: forall dirOrFile relOrAbs
@@ -53,8 +55,16 @@ sandbox root = map (SandboxedPath root) <<< onRelOrAbs onRel onAbs
 -- |
 -- | This should only be used for situations where a path is already constrained
 -- | within a system so that access to `/` is safe - for instance, in URIs.
-sandboxAny :: forall dirOrFile. Path Abs dirOrFile -> SandboxedPath dirOrFile
-sandboxAny p = SandboxedPath rootDir p
+-- |
+-- | If the path escapes the sandbox root - rootDir will be returned.
+sandboxAny :: forall dirOrFile relOrAbs. IsDirOrFile dirOrFile => IsRelOrAbs relOrAbs => Path relOrAbs dirOrFile -> SandboxedPath dirOrFile
+sandboxAny p = onRelOrAbs onRel onAbs p
+  where
+  onRel :: (Path Rel dirOrFile -> Path relOrAbs dirOrFile) -> Path Rel dirOrFile -> SandboxedPath dirOrFile
+  onRel _coercePath relPath = SandboxedPath rootDir (rootDir </> relPath)
+
+  onAbs :: (Path Abs dirOrFile -> Path relOrAbs dirOrFile) -> Path Abs dirOrFile -> SandboxedPath dirOrFile
+  onAbs _coercePath = SandboxedPath rootDir
 
 -- | Returns the location a `SandboxedPath` was sandboxed to.
 sandboxRoot :: forall dirOrFile. SandboxedPath dirOrFile -> Path Abs Dir
@@ -78,7 +88,7 @@ instance safeAppendDir :: SafeAppend Dir where
   safeAppendPath (SandboxedPath root baseDir) name =
     SandboxedPath root (appendPath baseDir (dir' name))
 
-safeAppendPath' :: forall dirOrFile s proxy . SafeAppend dirOrFile => IsName s => SandboxedPath Dir -> proxy s -> SandboxedPath dirOrFile
+safeAppendPath' :: forall dirOrFile s proxy. SafeAppend dirOrFile => IsName s => SandboxedPath Dir -> proxy s -> SandboxedPath dirOrFile
 safeAppendPath' d n = safeAppendPath d (reflectName n)
 
 infixl 6 safeAppendPath' as <///>
