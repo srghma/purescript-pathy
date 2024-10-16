@@ -10,10 +10,15 @@ import Data.String.NonEmpty.CodeUnits as NES
 import Data.Symbol (class IsSymbol)
 import Data.Symbol (reflectSymbol) as Symbol
 import Pathy.Phantom (DirOrFile)
+import Prim.Symbol as Symbol
 import Type.Data.Boolean (False) as Symbol
 import Type.Data.Symbol (class Equals) as Symbol
 import Type.Proxy (Proxy(..))
 import Unsafe.Coerce (unsafeCoerce)
+import Prim.Symbol as Symbol
+import Prim.Boolean (True, False)
+import Prim.TypeError (class Fail, Text, Quote)
+import Type.Proxy (Proxy(..))
 
 -- | A type used for both directory and file names, indexed by `DirOrFile`.
 newtype Name :: DirOrFile -> Type
@@ -112,8 +117,63 @@ class IsName :: Symbol -> Constraint
 class IsName sym where
   reflectName :: forall proxy d. proxy sym -> Name d
 
-instance isNameNESymbol :: (IsSymbol s, Symbol.Equals s "" Symbol.False) => IsName s where
+instance isNameNESymbol :: (IsSymbol s, NotContainsSlashAndNonEmpty s) => IsName s where
   reflectName _ = asNonEmpty $ Symbol.reflectSymbol (Proxy :: Proxy s)
     where
     asNonEmpty :: forall d. String -> Name d
     asNonEmpty = unsafeCoerce
+
+-- | A type-level function to check if a symbol contains a slash
+class ContainsSlash (sym :: Symbol) (result :: Boolean) | sym -> result
+
+instance containsSlashNil :: ContainsSlash "" False
+else instance containsSlashSlash :: ContainsSlash "/" True
+else instance containsSlashCons ::
+  ( Symbol.Cons h t sym
+  , ContainsSlash t tailResult
+  ) =>
+  ContainsSlash sym tailResult
+
+-- | A type-level function to check if a symbol is not empty
+class IsNonEmpty (sym :: Symbol) (result :: Boolean) | sym -> result
+
+instance isNonEmptySymbol ::
+  ( Symbol.Cons h t sym
+  ) =>
+  IsNonEmpty sym True
+else instance isNonEmptyEmpty ::
+  IsNonEmpty "" False
+
+-- | The main class to check if a symbol doesn't contain a slash and is non-empty
+class NotContainsSlashAndNonEmpty (sym :: Symbol)
+
+instance notContainsSlashAndNonEmpty ::
+  ( ContainsSlash sym containsSlash
+  , IsNonEmpty sym isNonEmpty
+  , AssertNotContainsSlashAndNonEmpty sym containsSlash isNonEmpty
+  ) =>
+  NotContainsSlashAndNonEmpty sym
+
+-- | Helper class to assert the conditions and provide meaningful error messages
+class AssertNotContainsSlashAndNonEmpty (sym :: Symbol) (containsSlash :: Boolean) (isNonEmpty :: Boolean)
+
+instance assertNotContainsSlashAndNonEmptyPass ::
+  AssertNotContainsSlashAndNonEmpty sym False True
+else instance assertNotContainsSlashAndNonEmptyFailSlash ::
+  ( Symbol.Append "Symbol " sym symQuoted
+  , Symbol.Append symQuoted " must not contain a slash '/'" fullMessage
+  , Fail (Text fullMessage)
+  ) =>
+  AssertNotContainsSlashAndNonEmpty sym True True
+else instance assertNotContainsSlashAndNonEmptyFailEmpty ::
+  ( Symbol.Append "Symbol " sym symQuoted
+  , Symbol.Append symQuoted " must not be empty" fullMessage
+  , Fail (Text fullMessage)
+  ) =>
+  AssertNotContainsSlashAndNonEmpty sym False False
+else instance assertNotContainsSlashAndNonEmptyFailBoth ::
+  ( Symbol.Append "Symbol " sym symQuoted
+  , Symbol.Append symQuoted " must not be empty and must not contain a slash '/'" fullMessage
+  , Fail (Text fullMessage)
+  ) =>
+  AssertNotContainsSlashAndNonEmpty sym True False
