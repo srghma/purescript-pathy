@@ -60,18 +60,21 @@ eitherPathSegment s = case mkPathSegment s of
   Just ps -> Right ps
   Nothing -> Left s
 
+data RootOrRelative
+data FileOrDirectory
+
 -- Phantom types for From and Path
-foreign import data Root :: Type
-foreign import data Relative :: Type
-foreign import data File :: Type
-foreign import data Directory :: Type
+foreign import data Root :: RootOrRelative
+foreign import data Relative :: RootOrRelative
+foreign import data File :: FileOrDirectory
+foreign import data Directory :: FileOrDirectory
 
 -- Tagless final encoding
-class FilePathF rep where
-  rootPath :: rep Root Directory
-  relativePath :: rep Relative Directory
-  filePath :: forall a. rep a Directory -> PathSegment -> rep a File
-  directoryPath :: forall a. rep a Directory -> PathSegment -> rep a Directory
+class FilePath filePath where
+  rootPath :: filePath Root Directory
+  relativePath :: filePath Relative Directory
+  filePath :: forall fileOrDirectory. filePath fileOrDirectory Directory -> PathSegment -> filePath fileOrDirectory File
+  directoryPath :: forall fileOrDirectory. filePath fileOrDirectory Directory -> PathSegment -> filePath fileOrDirectory Directory
 
 -- Example implementation
 newtype FilePathImpl a b = FilePathImpl (Array PathSegment)
